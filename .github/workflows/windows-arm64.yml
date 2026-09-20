@@ -58,12 +58,14 @@ jobs:
           cargo -vV
 
       - name: Check
+        if: github.event_name == 'pull_request'
         run: cargo check --locked --target ${{ env.RUST_TARGET }}
 
       # The upstream master branch currently has test-only compile failures
       # (missing helpers/types) even though the application target checks cleanly.
       # Keep surfacing those failures without blocking a usable ARM64 package.
       - name: Test (non-blocking upstream suite)
+        if: github.event_name == 'pull_request'
         continue-on-error: true
         run: cargo test --locked --target ${{ env.RUST_TARGET }}
 
@@ -91,6 +93,33 @@ jobs:
           'Ferrite portable settings directory.' | Set-Content -Path "$releaseDir\portable\README.txt" -Encoding utf8
           Compress-Archive -Path "$releaseDir\*" -DestinationPath 'ferrite-portable-windows-arm64.zip'
 
+      - name: Write portable checksum
+        shell: pwsh
+        run: |
+          Get-FileHash 'ferrite-portable-windows-arm64.zip' -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } |
+            Set-Content -Path 'SHA256SUMS-portable.txt' -Encoding ascii
+
+      - name: Upload portable ARM64 package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ferrite-portable-windows-arm64
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            ferrite-portable-windows-arm64.zip
+            SHA256SUMS-portable.txt
+
+      - name: Install WiX Toolset
+        shell: pwsh
+        run: |
+          choco install wixtoolset --yes --no-progress
+          $wixBin = Get-ChildItem "${env:ProgramFiles(x86)}\WiX Toolset v3*\bin" -Directory |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1 -ExpandProperty FullName
+          if (-not $wixBin) { throw 'WiX Toolset bin directory was not found' }
+          $wixBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
       - name: Install cargo-wix
         run: cargo install cargo-wix --locked
 
@@ -101,22 +130,19 @@ jobs:
           --target-bin-dir target\${{ env.RUST_TARGET }}\release
           --output ferrite-windows-arm64.msi
 
-      - name: Write checksums
+      - name: Write MSI checksum
         shell: pwsh
         run: |
-          @(
-            Get-FileHash 'ferrite-portable-windows-arm64.zip' -Algorithm SHA256
-            Get-FileHash 'ferrite-windows-arm64.msi' -Algorithm SHA256
-          ) | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } |
-            Set-Content -Path 'SHA256SUMS.txt' -Encoding ascii
+          Get-FileHash 'ferrite-windows-arm64.msi' -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } |
+            Set-Content -Path 'SHA256SUMS-msi.txt' -Encoding ascii
 
-      - name: Upload Windows ARM64 packages
+      - name: Upload ARM64 MSI
         uses: actions/upload-artifact@v4
         with:
-          name: ferrite-windows-arm64
+          name: ferrite-windows-arm64-msi
           if-no-files-found: error
           retention-days: 30
           path: |
-            ferrite-portable-windows-arm64.zip
             ferrite-windows-arm64.msi
-            SHA256SUMS.txt
+            SHA256SUMS-msi.txt
