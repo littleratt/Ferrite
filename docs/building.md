@@ -150,6 +150,7 @@ cargo build --release
 
 # With all optimizations (default in Cargo.toml)
 cargo build --release --target x86_64-pc-windows-msvc   # Windows
+cargo build --release --target aarch64-pc-windows-msvc  # Windows ARM64
 cargo build --release --target x86_64-unknown-linux-gnu # Linux
 cargo build --release --target x86_64-apple-darwin      # macOS Intel
 cargo build --release --target aarch64-apple-darwin     # macOS Apple Silicon
@@ -160,6 +161,7 @@ cargo build --release --target aarch64-apple-darwin     # macOS Apple Silicon
 | Platform       | Debug   | Release | Reduction |
 |---------------|---------|---------|-----------|
 | Windows x64   | ~120 MB | ~15 MB  | ~87%      |
+| Windows ARM64 | Varies  | Varies  | Native Snapdragon/Copilot+ build |
 | Linux x64     | ~100 MB | ~12 MB  | ~88%      |
 | macOS x64     | ~90 MB  | ~13 MB  | ~86%      |
 | macOS ARM64   | ~85 MB  | ~12 MB  | ~86%      |
@@ -194,6 +196,13 @@ cargo wix init
 cargo wix
 
 # Output: target/wix/ferrite-0.1.0-x86_64.msi
+
+# Windows ARM64 (requires the MSVC ARM64 build tools)
+rustup target add aarch64-pc-windows-msvc
+cargo build --release --target aarch64-pc-windows-msvc
+cargo wix --no-build --target aarch64-pc-windows-msvc \
+  --target-bin-dir target/aarch64-pc-windows-msvc/release \
+  --output ferrite-windows-arm64.msi
 ```
 
 **Note**: WiX Toolset 3.11+ must be installed and in PATH.

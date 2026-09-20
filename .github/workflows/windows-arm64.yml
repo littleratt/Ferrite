@@ -1,0 +1,118 @@
+# Native Windows on ARM build for Snapdragon/Copilot+ PCs.
+name: Windows ARM64
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - windows-arm64
+    paths:
+      - '.github/workflows/windows-arm64.yml'
+      - 'assets/**'
+      - 'src/**'
+      - 'wix/**'
+      - 'build.rs'
+      - 'Cargo.lock'
+      - 'Cargo.toml'
+      - 'rust-toolchain.toml'
+  pull_request:
+    paths:
+      - '.github/workflows/windows-arm64.yml'
+      - 'assets/**'
+      - 'src/**'
+      - 'wix/**'
+      - 'build.rs'
+      - 'Cargo.lock'
+      - 'Cargo.toml'
+      - 'rust-toolchain.toml'
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_TARGET: aarch64-pc-windows-msvc
+
+jobs:
+  build:
+    name: Build native Windows ARM64
+    runs-on: windows-11-arm
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust and ARM64 target
+        uses: dtolnay/rust-toolchain@1.92.0
+        with:
+          targets: aarch64-pc-windows-msvc
+
+      - name: Verify native runner and toolchain
+        shell: pwsh
+        run: |
+          if ($env:PROCESSOR_ARCHITECTURE -ne 'ARM64') {
+            throw "Expected an ARM64 runner, got $env:PROCESSOR_ARCHITECTURE"
+          }
+          rustc -vV
+          cargo -vV
+
+      - name: Check
+        run: cargo check --locked --target ${{ env.RUST_TARGET }}
+
+      - name: Test
+        run: cargo test --locked --target ${{ env.RUST_TARGET }}
+
+      - name: Build release executable
+        run: cargo build --locked --release --target ${{ env.RUST_TARGET }}
+
+      - name: Create native ARM64 portable package
+        shell: pwsh
+        run: |
+          $releaseDir = 'release-arm64'
+          New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
+          New-Item -ItemType Directory -Force -Path "$releaseDir\portable" | Out-Null
+          Copy-Item "target\$env:RUST_TARGET\release\ferrite.exe" "$releaseDir\ferrite.exe"
+          @(
+            'Ferrite for Windows ARM64'
+            '========================='
+            ''
+            'Native build for Windows 11 on ARM devices, including Snapdragon X Copilot+ PCs.'
+            ''
+            'Extract the entire archive, then run ferrite.exe.'
+            'Settings and session data are stored in the portable folder beside the app.'
+            ''
+            'This community build is unsigned. Windows SmartScreen may ask you to confirm before first launch.'
+          ) | Set-Content -Path "$releaseDir\README.txt" -Encoding utf8
+          'Ferrite portable settings directory.' | Set-Content -Path "$releaseDir\portable\README.txt" -Encoding utf8
+          Compress-Archive -Path "$releaseDir\*" -DestinationPath 'ferrite-portable-windows-arm64.zip'
+
+      - name: Install cargo-wix
+        run: cargo install cargo-wix --locked
+
+      - name: Build ARM64 MSI installer
+        run: >-
+          cargo wix --nocapture --no-build
+          --target ${{ env.RUST_TARGET }}
+          --target-bin-dir target\${{ env.RUST_TARGET }}\release
+          --output ferrite-windows-arm64.msi
+
+      - name: Write checksums
+        shell: pwsh
+        run: |
+          @(
+            Get-FileHash 'ferrite-portable-windows-arm64.zip' -Algorithm SHA256
+            Get-FileHash 'ferrite-windows-arm64.msi' -Algorithm SHA256
+          ) | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } |
+            Set-Content -Path 'SHA256SUMS.txt' -Encoding ascii
+
+      - name: Upload Windows ARM64 packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: ferrite-windows-arm64
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            ferrite-portable-windows-arm64.zip
+            ferrite-windows-arm64.msi
+            SHA256SUMS.txt

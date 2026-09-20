@@ -56,7 +56,7 @@
                             Id='ferrite.exe'
                             Name='ferrite.exe'
                             DiskId='1'
-                            Source='target\release\ferrite.exe'
+                            Source='$(var.CargoTargetBinDir)\ferrite.exe'
                             KeyPath='yes'/>
                     </Component>
 

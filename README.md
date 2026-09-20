@@ -215,6 +215,8 @@ Download the latest release for your platform from [GitHub Releases](https://git
 |----------|----------|-------|
 | **Windows** | `ferrite-windows-x64.msi` | Recommended - full installer with Start Menu |
 | Windows | `ferrite-portable-windows-x64.zip` | Portable - extract anywhere, run from USB |
+| **Windows on ARM** | `ferrite-windows-arm64.msi` | Native ARM64 installer for Snapdragon/Copilot+ PCs |
+| Windows on ARM | `ferrite-portable-windows-arm64.zip` | Native ARM64 portable build |
 | **Linux (Debian/Ubuntu)** | `ferrite-editor_amd64.deb` | For Debian, Ubuntu, Mint, Pop!_OS |
 | **Linux (Fedora/RHEL)** | `ferrite-editor.x86_64.rpm` | For Fedora, RHEL, CentOS, Rocky |
 | Linux | `ferrite-linux-x64.tar.gz` | Universal - works on any distro |
@@ -242,6 +244,19 @@ Download `ferrite-portable-windows-x64.zip` and extract anywhere. The zip includ
 - `README.txt` - quick start guide
 
 **True portable mode:** All configuration, sessions, and data are stored in the `portable` folder next to the executable. Nothing is written to `%APPDATA%` or the Windows registry. Perfect for USB drives or trying Ferrite without installation.
+
+#### Windows on ARM (Snapdragon/Copilot+ PCs)
+
+Use the ARM64 package instead of the x64 release when Windows reports an ARM-based
+processor in **Settings → System → About → System type**. The native build avoids
+x64 emulation and is produced on GitHub's `windows-11-arm` runner:
+
+- `ferrite-windows-arm64.msi` — standard installer
+- `ferrite-portable-windows-arm64.zip` — no-install portable edition
+
+Fork maintainers can create both packages from **Actions → Windows ARM64 → Run
+workflow**. Until an official signed ARM64 release is published, fork-built
+packages are unsigned and can trigger a Windows SmartScreen confirmation.
 
 </details>
 
